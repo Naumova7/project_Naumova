@@ -1,0 +1,154 @@
+DROP TABLE IF EXISTS istoriya_dolzhnostey CASCADE;
+DROP TABLE IF EXISTS sotrudniki CASCADE;
+DROP TABLE IF EXISTS pomeshcheniya CASCADE;
+DROP TABLE IF EXISTS proekty CASCADE;
+DROP TABLE IF EXISTS podrazdeleniya CASCADE;
+DROP TABLE IF EXISTS dolzhnosti CASCADE;
+DROP TABLE IF EXISTS pol CASCADE;
+
+-- 1. ТАБЛИЦА ПОЛ 
+CREATE TABLE pol (
+    id_pol SERIAL PRIMARY KEY,
+    nazvanie VARCHAR(10) NOT NULL
+);
+
+-- 2. ТАБЛИЦА ДОЛЖНОСТИ 
+CREATE TABLE dolzhnosti (
+    id_dolzhnosti SERIAL PRIMARY KEY,
+    nazvanie_dolzhnosti VARCHAR(50) NOT NULL,
+    zarplata DECIMAL(10, 2)
+);
+
+-- 3. ТАБЛИЦА ПОДРАЗДЕЛЕНИЯ 
+CREATE TABLE podrazdeleniya (
+    id_podrazdeleniya SERIAL PRIMARY KEY,
+    nazvanie_podrazdeleniya VARCHAR(50) NOT NULL,
+    kod_podrazdeleniya VARCHAR(10),
+    data_sozdaniya TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. ТАБЛИЦА ПОМЕЩЕНИЯ 
+CREATE TABLE pomeshcheniya (
+    id_pomeshcheniya SERIAL PRIMARY KEY,
+    nomer_pomeshcheniya VARCHAR(10) NOT NULL,
+    id_podrazdeleniya INTEGER NOT NULL,
+    vmestimost INTEGER NOT NULL
+);
+
+-- 5. ТАБЛИЦА СОТРУДНИКИ 
+CREATE TABLE sotrudniki (
+    id_sotrudnika SERIAL PRIMARY KEY,
+    fio VARCHAR(70) NOT NULL,
+    id_podrazdeleniya INTEGER NOT NULL,
+    id_pomeshcheniya INTEGER,
+    id_dolzhnosti INTEGER NOT NULL,
+    data_rozhdenia DATE,
+    id_pol INTEGER NOT NULL,
+    telefon VARCHAR(15),
+    pochta VARCHAR(30)
+);
+
+-- 6. ТАБЛИЦА ИСТОРИЯ ДОЛЖНОСТЕЙ
+CREATE TABLE istoriya_dolzhnostey (
+    id_zapisi SERIAL PRIMARY KEY,
+    id_sotrudnika INTEGER NOT NULL,
+    staraya_dolzhnost VARCHAR(50),
+    novaya_dolzhnost VARCHAR(50),
+    data_smeny TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. ТАБЛИЦА ПРОЕКТЫ 
+CREATE TABLE proekty (
+    id_proekta SERIAL PRIMARY KEY,
+    nazvanie VARCHAR(50) NOT NULL,
+    id_podrazdeleniya INTEGER
+);
+
+-- Внешние ключи
+-- Помещения -> Подразделения
+ALTER TABLE pomeshcheniya 
+ADD CONSTRAINT fk_pomeshchenie_podrazdelenie 
+FOREIGN KEY (id_podrazdeleniya) 
+REFERENCES podrazdeleniya(id_podrazdeleniya);
+
+-- Сотрудники -> Подразделения
+ALTER TABLE sotrudniki 
+ADD CONSTRAINT fk_sotrudnik_podrazdelenie 
+FOREIGN KEY (id_podrazdeleniya) 
+REFERENCES podrazdeleniya(id_podrazdeleniya);
+
+-- Сотрудники -> Помещения
+ALTER TABLE sotrudniki 
+ADD CONSTRAINT fk_sotrudnik_pomeshchenie 
+FOREIGN KEY (id_pomeshcheniya) 
+REFERENCES pomeshcheniya(id_pomeshcheniya);
+
+-- Сотрудники -> Должности
+ALTER TABLE sotrudniki 
+ADD CONSTRAINT fk_sotrudnik_dolzhnost 
+FOREIGN KEY (id_dolzhnosti) 
+REFERENCES dolzhnosti(id_dolzhnosti);
+
+-- Сотрудники -> Пол
+ALTER TABLE sotrudniki 
+ADD CONSTRAINT fk_sotrudnik_pol 
+FOREIGN KEY (id_pol) 
+REFERENCES pol(id_pol);
+
+-- Проекты -> Подразделения
+ALTER TABLE proekty 
+ADD CONSTRAINT fk_proekt_podrazdelenie 
+FOREIGN KEY (id_podrazdeleniya) 
+REFERENCES podrazdeleniya(id_podrazdeleniya);
+
+-- История должностей -> Сотрудники
+ALTER TABLE istoriya_dolzhnostey 
+ADD CONSTRAINT fk_istoriya_sotrudnik 
+FOREIGN KEY (id_sotrudnika) 
+REFERENCES sotrudniki(id_sotrudnika)
+ON DELETE CASCADE;
+
+-- Ограничения
+-- Проверка вместимости помещения
+ALTER TABLE pomeshcheniya
+ADD CONSTRAINT check_pomeshcheniya_vmestimost
+CHECK (vmestimost > 0);
+
+-- Проверка телефона 
+ALTER TABLE sotrudniki
+ADD CONSTRAINT check_sotrudniki_telefon
+CHECK (
+    telefon IS NULL OR 
+    telefon ~ '^\+?[0-9\s\-\(\)]{5,20}$'
+);
+
+-- Проверка email 
+ALTER TABLE sotrudniki
+ADD CONSTRAINT check_sotrudniki_email
+CHECK (
+    pochta IS NULL OR 
+    pochta ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+);
+
+-- Проверка зарплаты
+ALTER TABLE dolzhnosti
+ADD CONSTRAINT check_dolzhnosti_zarplata
+CHECK (zarplata IS NULL OR zarplata >= 0);
+
+-- Проверка даты создания подразделения
+ALTER TABLE podrazdeleniya
+ADD CONSTRAINT check_podrazdeleniya_data
+CHECK (data_sozdaniya <= CURRENT_TIMESTAMP);
+
+-- Проверка даты рождения
+ALTER TABLE sotrudniki
+ADD CONSTRAINT check_sotrudniki_birthdate
+CHECK (
+    data_rozhdenia IS NULL OR 
+    (data_rozhdenia >= '1900-01-01' AND data_rozhdenia <= CURRENT_DATE)
+);
+
+-- Проверка даты смены должности
+ALTER TABLE istoriya_dolzhnostey
+ADD CONSTRAINT check_istoriya_data
+CHECK (data_smeny <= CURRENT_TIMESTAMP);
