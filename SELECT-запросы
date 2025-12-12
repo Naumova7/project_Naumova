@@ -1,1 +1,61 @@
+-- 1. Подразделения с количеством сотрудников отсортированных по убыванию 
+SELECT 
+    p.nazvanie_podrazdeleniya,
+    COUNT(s.id_sotrudnika) AS sotrudnikov
+FROM podrazdeleniya p
+LEFT JOIN sotrudniki s USING(id_podrazdeleniya)
+GROUP BY p.id_podrazdeleniya, p.nazvanie_podrazdeleniya
+ORDER BY sotrudnikov DESC;
 
+
+-- 2. Сотрудники в помещениях > 5 человек
+SELECT 
+    s.fio,
+    s.id_podrazdeleniya,
+    pm.nomer_pomeshcheniya,
+    pm.vmestimost
+FROM sotrudniki s
+JOIN pomeshcheniya pm ON s.id_pomeshcheniya = pm.id_pomeshcheniya
+WHERE pm.vmestimost > 5
+ORDER BY pm.vmestimost DESC, s.fio;
+
+
+-- 3. Начальники и их подчиненные
+SELECT 
+    s.fio AS nachalnik,
+    d.nazvanie_dolzhnosti AS dolzhnost,
+    p.nazvanie_podrazdeleniya AS podrazdelenie,
+    COUNT(s2.id_sotrudnika) - 1 AS podchinennykh  -- минус сам начальник
+FROM sotrudniki s
+JOIN dolzhnosti d USING(id_dolzhnosti)
+JOIN podrazdeleniya p USING(id_podrazdeleniya)
+JOIN sotrudniki s2 USING(id_podrazdeleniya)
+WHERE d.nazvanie_dolzhnosti LIKE ANY(ARRAY['%директор%', 'Начальник%'])
+GROUP BY s.id_sotrudnika, s.fio, d.nazvanie_dolzhnosti, p.nazvanie_podrazdeleniya
+ORDER BY podchinennykh DESC;
+
+
+-- 4. Сотрудники без рабочего места
+SELECT 
+    s.fio,
+    p.nazvanie_podrazdeleniya,
+    d.nazvanie_dolzhnosti
+FROM sotrudniki s
+JOIN podrazdeleniya p USING(id_podrazdeleniya)
+JOIN dolzhnosti d USING(id_dolzhnosti)
+WHERE s.id_pomeshcheniya IS NULL
+ORDER BY p.nazvanie_podrazdeleniya, s.fio;
+
+
+-- 5. Топ-3 самых загруженных помещений
+SELECT 
+    pm.nomer_pomeshcheniya,
+    p.nazvanie_podrazdeleniya,
+    COUNT(s.id_sotrudnika) AS zanyato
+FROM pomeshcheniya pm
+JOIN podrazdeleniya p ON pm.id_podrazdeleniya = p.id_podrazdeleniya
+LEFT JOIN sotrudniki s ON pm.id_pomeshcheniya = s.id_pomeshcheniya
+GROUP BY pm.id_pomeshcheniya, pm.nomer_pomeshcheniya, p.nazvanie_podrazdeleniya  -- все 3 поля!
+HAVING COUNT(s.id_sotrudnika) > 0
+ORDER BY zanyato DESC
+LIMIT 3;
