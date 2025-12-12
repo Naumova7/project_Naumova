@@ -8,7 +8,7 @@ GROUP BY p.id_podrazdeleniya, p.nazvanie_podrazdeleniya
 ORDER BY sotrudnikov DESC;
 
 
--- 2. Сотрудники в помещениях > 5 человек
+-- 2. Сотрудники в помещениях вместимосью больше 5 человек
 SELECT 
     s.fio,
     s.id_podrazdeleniya,
@@ -25,7 +25,7 @@ SELECT
     s.fio AS nachalnik,
     d.nazvanie_dolzhnosti AS dolzhnost,
     p.nazvanie_podrazdeleniya AS podrazdelenie,
-    COUNT(s2.id_sotrudnika) - 1 AS podchinennykh  -- минус сам начальник
+    COUNT(s2.id_sotrudnika) - 1 AS podchinennykh  
 FROM sotrudniki s
 JOIN dolzhnosti d USING(id_dolzhnosti)
 JOIN podrazdeleniya p USING(id_podrazdeleniya)
@@ -55,7 +55,7 @@ SELECT
 FROM pomeshcheniya pm
 JOIN podrazdeleniya p ON pm.id_podrazdeleniya = p.id_podrazdeleniya
 LEFT JOIN sotrudniki s ON pm.id_pomeshcheniya = s.id_pomeshcheniya
-GROUP BY pm.id_pomeshcheniya, pm.nomer_pomeshcheniya, p.nazvanie_podrazdeleniya  -- все 3 поля!
+GROUP BY pm.id_pomeshcheniya, pm.nomer_pomeshcheniya, p.nazvanie_podrazdeleniya 
 HAVING COUNT(s.id_sotrudnika) > 0
 ORDER BY zanyato DESC
 LIMIT 3;
