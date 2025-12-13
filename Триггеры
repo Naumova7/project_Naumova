@@ -1,1 +1,57 @@
+-- Триггеры
+-- 1 триггер 
+-- Проверка вместимости помещения
+CREATE OR REPLACE FUNCTION check_capacity()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (SELECT COUNT(*) FROM sotrudniki WHERE id_pomeshcheniya = NEW.id_pomeshcheniya)
+       >= (SELECT vmestimost FROM pomeshcheniya WHERE id_pomeshcheniya = NEW.id_pomeshcheniya) THEN
+        RAISE EXCEPTION 'Превышена вместимость';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+-- Один триггер
+CREATE TRIGGER check_on_insert 
+BEFORE INSERT ON sotrudniki 
+FOR EACH ROW 
+EXECUTE FUNCTION check_capacity();
+
+
+-- 2 триггер
+-- Обновление должности
+CREATE OR REPLACE FUNCTION log_position()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO istoriya_dolzhnostey (id_sotrudnika, staraya_dolzhnost, novaya_dolzhnost)
+    SELECT NEW.id_sotrudnika, d1.nazvanie_dolzhnosti, d2.nazvanie_dolzhnosti
+    FROM dolzhnosti d1, dolzhnosti d2
+    WHERE d1.id_dolzhnosti = OLD.id_dolzhnosti 
+      AND d2.id_dolzhnosti = NEW.id_dolzhnosti;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER log_position_trigger 
+AFTER UPDATE ON sotrudniki 
+FOR EACH ROW 
+EXECUTE FUNCTION log_position();
+
+
+-- 3 триггер
+-- Удаление подразделения 
+CREATE OR REPLACE FUNCTION stop_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM sotrudniki WHERE id_podrazdeleniya = OLD.id_podrazdeleniya) THEN
+        RAISE EXCEPTION 'Нельзя удалить подразделение';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER block_delete 
+BEFORE DELETE ON podrazdeleniya 
+FOR EACH ROW 
+EXECUTE FUNCTION stop_delete();
