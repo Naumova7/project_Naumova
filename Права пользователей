@@ -1,0 +1,19 @@
+-- Права пользователей 
+-- 1 Роль hr_manager с правами на SELECT, INSERT, UPDATE таблиц сотрудников и помещений
+CREATE ROLE hr_manager;
+GRANT SELECT, INSERT, UPDATE ON sotrudniki TO hr_manager;
+GRANT SELECT, INSERT, UPDATE ON pomeshcheniya TO hr_manager;
+
+-- 2 Роль department_head с правом SELECT только по своему подразделению
+CREATE ROLE department_head;
+GRANT SELECT ON sotrudniki TO department_head;
+
+-- 3 Роль auditor с запретом доступа к зарплатным данным но разрешить просмотр остальной информации
+CREATE ROLE auditor;
+GRANT SELECT ON sotrudniki TO auditor;
+GRANT SELECT ON pomeshcheniya TO auditor;
+GRANT SELECT ON podrazdeleniya TO auditor;
+GRANT SELECT ON pol TO auditor;
+GRANT SELECT ON proekty TO auditor;
+GRANT SELECT ON istoriya_dolzhnostey TO auditor;
+REVOKE SELECT ON dolzhnosti FROM auditor;
