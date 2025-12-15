@@ -1,0 +1,184 @@
+-- 1 Процедура на добавление нового сотрудника с проверкой данных
+CREATE OR REPLACE PROCEDURE dobavit_sotrudnika(
+    p_fio VARCHAR(70),
+    p_id_podrazdeleniya INTEGER,
+    p_id_dolzhnosti INTEGER,
+    p_id_pol INTEGER,
+    p_id_pomeshcheniya INTEGER DEFAULT NULL,
+    p_data_rozhdenia DATE DEFAULT NULL,
+    p_telefon VARCHAR(15) DEFAULT NULL,
+    p_pochta VARCHAR(30) DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Проверка существования подразделения
+    IF NOT EXISTS(SELECT 1 FROM podrazdeleniya WHERE id_podrazdeleniya = p_id_podrazdeleniya) THEN
+        RAISE EXCEPTION 'Подразделение не существует';
+    END IF;
+    
+    -- Проверка существования должности
+    IF NOT EXISTS(SELECT 1 FROM dolzhnosti WHERE id_dolzhnosti = p_id_dolzhnosti) THEN
+        RAISE EXCEPTION 'Должность не существует';
+    END IF;
+    
+    -- Проверка существования пола
+    IF NOT EXISTS(SELECT 1 FROM pol WHERE id_pol = p_id_pol) THEN
+        RAISE EXCEPTION 'Пол не существует';
+    END IF;
+    
+    -- Проверка помещения (если указано)
+    IF p_id_pomeshcheniya IS NOT NULL THEN
+        -- Проверка существования помещения
+        IF NOT EXISTS(SELECT 1 FROM pomeshcheniya WHERE id_pomeshcheniya = p_id_pomeshcheniya) THEN
+            RAISE EXCEPTION 'Помещение не существует';
+        END IF;
+        
+        -- Проверка принадлежности помещения к подразделению
+        IF NOT EXISTS(
+            SELECT 1 FROM pomeshcheniya 
+            WHERE id_pomeshcheniya = p_id_pomeshcheniya 
+            AND id_podrazdeleniya = p_id_podrazdeleniya
+        ) THEN
+            RAISE EXCEPTION 'Помещение не принадлежит указанному подразделению';
+        END IF;
+        
+        -- Проверка вместимости
+        IF (SELECT COUNT(*) FROM sotrudniki WHERE id_pomeshcheniya = p_id_pomeshcheniya)
+           >= (SELECT vmestimost FROM pomeshcheniya WHERE id_pomeshcheniya = p_id_pomeshcheniya) THEN
+            RAISE EXCEPTION 'Превышена вместимость помещения';
+        END IF;
+    END IF;
+    
+    -- Вставка сотрудника
+    INSERT INTO sotrudniki (
+        fio, id_podrazdeleniya, id_pomeshcheniya, id_dolzhnosti, 
+        data_rozhdenia, id_pol, telefon, pochta
+    ) VALUES (
+        p_fio, p_id_podrazdeleniya, p_id_pomeshcheniya, p_id_dolzhnosti,
+        p_data_rozhdenia, p_id_pol, p_telefon, p_pochta
+    );
+END;
+$$;
+
+-- проверка работы процедуры 
+-- Первый вызов
+CALL dobavit_sotrudnika('Иванов Иван Иванович', 1, 3, 1);
+
+-- Второй вызов
+CALL dobavit_sotrudnika(
+    p_fio := 'Петров Петр Петрович',
+    p_id_podrazdeleniya := 2,
+    p_id_dolzhnosti := 4,
+    p_id_pol := 1,
+    p_id_pomeshcheniya := 5,
+    p_data_rozhdenia := '1990-01-01',
+    p_telefon := '+79161234567',
+    p_pochta := 'petrov@company.ru'
+);
+-- Смотрим добавился в итоге или нет
+SELECT * FROM sotrudniki WHERE fio LIKE '%Иванов%';
+
+-- 2 Процедура перевода сотрудника в другое подразделение с автоматическим назначением свободного помещения
+CREATE OR REPLACE PROCEDURE perevesti_sotrudnika(
+    p_id_sotrudnika INTEGER,
+    p_novoe_podrazdelenie_id INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    svobodnoe_pomeshchenie_id INTEGER;
+BEGIN
+    -- Проверка существования сотрудника
+    IF NOT EXISTS(SELECT 1 FROM sotrudniki WHERE id_sotrudnika = p_id_sotrudnika) THEN
+        RAISE EXCEPTION 'Сотрудник не существует';
+    END IF;
+    
+    -- Проверка существования нового подразделения
+    IF NOT EXISTS(SELECT 1 FROM podrazdeleniya WHERE id_podrazdeleniya = p_novoe_podrazdelenie_id) THEN
+        RAISE EXCEPTION 'Подразделение не существует';
+    END IF;
+    
+    -- Поиск свободного места в новом подразделении
+    SELECT pm.id_pomeshcheniya INTO svobodnoe_pomeshchenie_id
+    FROM pomeshcheniya pm
+    WHERE pm.id_podrazdeleniya = p_novoe_podrazdelenie_id
+      AND pm.vmestimost > (
+          SELECT COUNT(*) 
+          FROM sotrudniki s 
+          WHERE s.id_pomeshcheniya = pm.id_pomeshcheniya
+      )
+    LIMIT 1;
+    
+    -- Обновление данных сотрудника
+    UPDATE sotrudniki 
+    SET 
+        id_podrazdeleniya = p_novoe_podrazdelenie_id,
+        id_pomeshcheniya = svobodnoe_pomeshchenie_id
+    WHERE id_sotrudnika = p_id_sotrudnika;
+END;
+$$;
+-- Проверка работы процедуры 
+-- Посмотрим сотрудника с ID 1 
+SELECT 
+    id_sotrudnika,
+    fio,
+    id_podrazdeleniya,
+    id_pomeshcheniya,
+    (SELECT nazvanie_podrazdeleniya FROM podrazdeleniya WHERE id_podrazdeleniya = s.id_podrazdeleniya) as podrazdelenie,
+    (SELECT nomer_pomeshcheniya FROM pomeshcheniya WHERE id_pomeshcheniya = s.id_pomeshcheniya) as pomeshchenie
+FROM sotrudniki s
+WHERE id_sotrudnika = 1;
+-- После этого смотрим свободные поздразделения, куда будем переводить сотрудника 
+-- Например переведем в подразделение с ID 3 
+SELECT 
+    pm.id_pomeshcheniya,
+    pm.nomer_pomeshcheniya,
+    pm.vmestimost,
+    COUNT(s.id_sotrudnika) as zanyato,
+    pm.vmestimost - COUNT(s.id_sotrudnika) as svobodno_mest
+FROM pomeshcheniya pm
+LEFT JOIN sotrudniki s ON pm.id_pomeshcheniya = s.id_pomeshcheniya
+WHERE pm.id_podrazdeleniya = 3
+GROUP BY pm.id_pomeshcheniya, pm.nomer_pomeshcheniya, pm.vmestimost
+ORDER BY svobodno_mest DESC;
+-- Дальше вызываем саму процедуру(переводим сотрудника с ID 1 в подразделение с ID 3)
+CALL perevesti_sotrudnika(1, 3);
+-- Смотрим результат 
+-- Снова посмотрим на сотрудника
+SELECT 
+    id_sotrudnika,
+    fio,
+    id_podrazdeleniya,
+    id_pomeshcheniya,
+    (SELECT nazvanie_podrazdeleniya FROM podrazdeleniya WHERE id_podrazdeleniya = s.id_podrazdeleniya) as podrazdelenie,
+    (SELECT nomer_pomeshcheniya FROM pomeshcheniya WHERE id_pomeshcheniya = s.id_pomeshcheniya) as pomeshchenie
+FROM sotrudniki s
+WHERE id_sotrudnika = 1;
+
+
+-- 3 Процедура формирования отчёта по подразделению
+CREATE OR REPLACE PROCEDURE otchet_po_podrazdeleniyu(p_id_podrazdeleniya INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN 
+        SELECT 
+            s.fio,
+            d.nazvanie_dolzhnosti,
+            d.zarplata
+        FROM sotrudniki s
+        JOIN dolzhnosti d ON s.id_dolzhnosti = d.id_dolzhnosti
+        WHERE s.id_podrazdeleniya = p_id_podrazdeleniya
+        ORDER BY s.fio
+    LOOP
+        RAISE INFO 'ФИО: %, Должность: %, Зарплата: %', 
+                   rec.fio, rec.nazvanie_dolzhnosti, rec.zarplata;
+    END LOOP;
+END;
+$$;
+
+-- Проверка
+CALL otchet_po_podrazdeleniyu(2);
