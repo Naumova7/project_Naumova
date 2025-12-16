@@ -36,8 +36,8 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER log_position_trigger 
 AFTER UPDATE ON sotrudniki 
 FOR EACH ROW 
+WHEN (OLD.id_dolzhnosti IS DISTINCT FROM NEW.id_dolzhnosti)
 EXECUTE FUNCTION log_position();
-
 
 -- 3 триггер
 -- Удаление подразделения 
