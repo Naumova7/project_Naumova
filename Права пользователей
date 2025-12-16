@@ -1,19 +1,46 @@
 -- Права пользователей 
--- 1 Роль hr_manager с правами на SELECT, INSERT, UPDATE таблиц сотрудников и помещений
+-- 1. Роль hr_manager с правами на SELECT, INSERT, UPDATE таблиц сотрудников и помещений
 CREATE ROLE hr_manager;
 GRANT SELECT, INSERT, UPDATE ON sotrudniki TO hr_manager;
 GRANT SELECT, INSERT, UPDATE ON pomeshcheniya TO hr_manager;
 
--- 2 Роль department_head с правом SELECT только по своему подразделению
+-- 2. Роль department_head с правом SELECT только по своему подразделению
+-- Сначала создаем роль
 CREATE ROLE department_head;
+-- После даем право SELECT на таблицу сотрудников
 GRANT SELECT ON sotrudniki TO department_head;
+-- Затем включаем RLS (Row Level Security) для ограничения доступа
+ALTER TABLE sotrudniki ENABLE ROW LEVEL SECURITY;
+-- Дальше создаем политику безопасности(у нас текущей пользователь должен содержать в имени "dept_X", потому что "X" это id его подразделения)
+CREATE POLICY department_head_policy ON sotrudniki
+FOR SELECT
+TO department_head
+USING (
+    id_podrazdeleniya = CAST(SPLIT_PART(current_user, '_', 2) AS INTEGER)
+);
+
+-- Проверка
+-- Создаем пользователей 
+CREATE USER dept_2;  
+CREATE USER dept_3;  
+
+GRANT department_head TO dept_2, dept_3;
 
 -- 3 Роль auditor с запретом доступа к зарплатным данным но разрешить просмотр остальной информации
+-- Создаем роль аудитора
 CREATE ROLE auditor;
+-- Разрешаем просмотр всех данных кроме зарплатных
 GRANT SELECT ON sotrudniki TO auditor;
 GRANT SELECT ON pomeshcheniya TO auditor;
 GRANT SELECT ON podrazdeleniya TO auditor;
 GRANT SELECT ON pol TO auditor;
 GRANT SELECT ON proekty TO auditor;
 GRANT SELECT ON istoriya_dolzhnostey TO auditor;
-REVOKE SELECT ON dolzhnosti FROM auditor;
+-- Запрещаем доступ к таблице с зарплатами
+REVOKE ALL ON dolzhnosti FROM auditor;
+-- Создаем представление должностей без зарплаты для аудитора
+CREATE VIEW v_dolzhnosti_bez_zarplaty AS
+SELECT id_dolzhnosti, nazvanie_dolzhnosti 
+FROM dolzhnosti;
+-- Разрешаем аудитору использовать это представление
+GRANT SELECT ON v_dolzhnosti_bez_zarplaty TO auditor;
