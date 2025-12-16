@@ -22,7 +22,7 @@ CREATE TABLE podrazdeleniya (
 -- 4. ТАБЛИЦА ПОМЕЩЕНИЯ 
 CREATE TABLE pomeshcheniya (
     id_pomeshcheniya SERIAL PRIMARY KEY,
-    nomer_pomeshcheniya VARCHAR(10) NOT NULL,
+    nomer_pomeshcheniya VARCHAR(50) NOT NULL,
     id_podrazdeleniya INTEGER NOT NULL,
     vmestimost INTEGER NOT NULL
 );
@@ -97,8 +97,7 @@ REFERENCES podrazdeleniya(id_podrazdeleniya);
 ALTER TABLE istoriya_dolzhnostey 
 ADD CONSTRAINT fk_istoriya_sotrudnik 
 FOREIGN KEY (id_sotrudnika) 
-REFERENCES sotrudniki(id_sotrudnika)
-ON DELETE CASCADE;
+REFERENCES sotrudniki(id_sotrudnika);
 
 -- Ограничения
 -- Проверка вместимости помещения
