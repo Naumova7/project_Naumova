@@ -1,6 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
-
+import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
 from PyQt5 import uic
 from podcluch import Connection
@@ -27,8 +27,12 @@ class Widget(QWidget):
     def auth(self):
         self.login = self.ui.lineEdit_2.text()
         self.parol = self.ui.parol.text()
+        if not self.login or not self.parol:
+            QMessageBox.warning(self, 'Ошибка', 'Заполните все поля')
+            return
+        hash_parol = hashlib.sha256(self.parol.encode()).hexdigest()
         cursor = self.connect.cur
-        cursor.execute(f"SELECT login, parol  FROM users WHERE login = '{self.login}' AND parol = '{self.parol}'")
+        cursor.execute(f"SELECT login, parol FROM users WHERE login = '{self.login}' AND parol = '{hash_parol}'")
         outpu = cursor.fetchone()
         print(outpu)
         if outpu != None:
@@ -42,12 +46,23 @@ class Widget(QWidget):
         self.login = self.ui.lineEdit_2.text()
         self.parol = self.ui.parol.text()
         if not self.login or not self.parol:
-            QMessageBox.warning(self,"Предупреждение", "Поля логин и пароль не должны быть пустыми")
+            QMessageBox.warning(self, 'Ошибка', 'Заполните все поля')
             return
-        else:
-            self.connect.cur.execute(f"INSERT INTO users (login, parol) VALUES ('{self.login}', '{self.parol}')")
-            self.connect.con.commit()
-            QMessageBox.information(self,'Сообщение', 'пользователь зарегистрирован')
+        if len(self.parol) < 4:
+            QMessageBox.warning(self, 'Ошибка', 'Пароль должен содержать минимум 4 символа')
+            return
+        self.connect.cur.execute(f"SELECT * FROM users WHERE login = '{self.login}'")
+        existing_user = self.connect.cur.fetchone()
+        if existing_user:
+            QMessageBox.warning(self, 'Ошибка', 'Пользователь с таким логином уже существует')
+            return
+        hash_parol = hashlib.sha256(self.parol.encode()).hexdigest()
+
+        # Вставляем ХЭШ пароля, а не сам пароль
+        self.connect.cur.execute(f"INSERT INTO users (login, parol) VALUES ('{self.login}', '{hash_parol}')")
+        self.connect.con.commit()
+
+        QMessageBox.information(self, 'Сообщение', 'Пользователь зарегистрирован')
 
 
 if __name__ == "__main__":

@@ -9,9 +9,9 @@ class Connection:
             self.con = connect(
                 host = 'localhost',
                 user = 'postgres',
-                password = 'postgres',
+                password = 'Na221107',
                 dbname = 'uchet_sotrudnikov',
-                port = '5433'
+                port = '5432'
             )
             print('Подключение установлено')
             self.cur = self.con.cursor()
