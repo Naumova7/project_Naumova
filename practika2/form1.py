@@ -44,3 +44,4 @@ class Ui_Widget(object):
         self.reg.setText(_translate("Widget", "Зарегистрироваться"))
         self.label.setText(_translate("Widget", "Введте пароль"))
         self.label_2.setText(_translate("Widget", "Введите логин"))
+

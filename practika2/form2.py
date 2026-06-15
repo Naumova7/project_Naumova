@@ -77,3 +77,4 @@ class Ui_Widget2(object):
         self.comboBox.setItemText(1, _translate("Widget2", "История должностей"))
         self.comboBox.setItemText(2, _translate("Widget2", "Подразделения"))
         self.comboBox.setItemText(3, _translate("Widget2", "Помещения"))
+
