@@ -36,6 +36,9 @@ class Ui_Widget(object):
 
         self.retranslateUi(Widget)
         QtCore.QMetaObject.connectSlotsByName(Widget)
+        Widget.setTabOrder(self.lineEdit_2, self.parol)
+        Widget.setTabOrder(self.parol, self.vxod)
+        Widget.setTabOrder(self.vxod, self.reg)
 
     def retranslateUi(self, Widget):
         _translate = QtCore.QCoreApplication.translate
@@ -44,4 +47,3 @@ class Ui_Widget(object):
         self.reg.setText(_translate("Widget", "Зарегистрироваться"))
         self.label.setText(_translate("Widget", "Введте пароль"))
         self.label_2.setText(_translate("Widget", "Введите логин"))
-
