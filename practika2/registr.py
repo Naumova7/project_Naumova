@@ -57,11 +57,8 @@ class Widget(QWidget):
             QMessageBox.warning(self, 'Ошибка', 'Пользователь с таким логином уже существует')
             return
         hash_parol = hashlib.sha256(self.parol.encode()).hexdigest()
-
-        # Вставляем ХЭШ пароля, а не сам пароль
         self.connect.cur.execute(f"INSERT INTO users (login, parol) VALUES ('{self.login}', '{hash_parol}')")
         self.connect.con.commit()
-
         QMessageBox.information(self, 'Сообщение', 'Пользователь зарегистрирован')
 
 
@@ -70,5 +67,3 @@ if __name__ == "__main__":
     widget = Widget()
     widget.show()
     app.exec()
-
-
